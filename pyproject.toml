@@ -1,0 +1,22 @@
+[project]
+name = "upscaler"
+version = "0.1.0"
+description = "Local AI image upscaler CLI (Real-ESRGAN ncnn-vulkan wrapper)"
+requires-python = ">=3.12"
+dependencies = ["pillow>=11"]
+
+[project.scripts]
+upscale = "upscaler.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
