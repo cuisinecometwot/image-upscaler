@@ -7,3 +7,10 @@ dist/
 .env
 input/
 output/
+
+# GUI (Tauri)
+gui/node_modules/
+gui/dist/
+gui/target/
+gui/engine/
+gui/src-tauri/gen/

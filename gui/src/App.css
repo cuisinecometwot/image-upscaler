@@ -1,0 +1,216 @@
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --text: #1d2330;
+  --muted: #6b7385;
+  --border: #d9dde5;
+  --accent: #3b6df0;
+  --ok: #1f9d55;
+  --err: #d64545;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1e24;
+    --panel: #242830;
+    --text: #e6e8ee;
+    --muted: #9aa1b1;
+    --border: #3a3f4b;
+    --accent: #6b8ff5;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+
+main.dragging .list {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+
+button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  min-width: 96px;
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hint {
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.empty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 80px 140px 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.row .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row .size {
+  color: var(--muted);
+  text-align: right;
+}
+
+.row .status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+  color: var(--muted);
+}
+
+.row .status progress {
+  width: 80px;
+}
+
+.row.done .status {
+  color: var(--ok);
+}
+
+.row.error .status {
+  color: var(--err);
+}
+
+.row .remove {
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.error-text {
+  grid-column: 1 / -1;
+  color: var(--err);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.settings .out {
+  flex: 1 1 100%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings .out input {
+  flex: 1;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+fieldset {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+  padding: 6px 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+legend {
+  color: var(--muted);
+  padding: 0 4px;
+}
+
+fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.overall {
+  flex: 1;
+  height: 10px;
+}
+
+.summary {
+  color: var(--muted);
+  min-width: 120px;
+}

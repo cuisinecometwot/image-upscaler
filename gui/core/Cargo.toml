@@ -1,0 +1,8 @@
+[package]
+name = "upscaler-core"
+version = "0.1.0"
+edition = "2021"
+description = "Upscale pipeline around realesrgan-ncnn-vulkan, framework-free"
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "bmp", "tiff"] }
