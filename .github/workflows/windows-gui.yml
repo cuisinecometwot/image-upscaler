@@ -1,0 +1,55 @@
+name: Windows GUI
+
+on:
+  push:
+    branches: [main, feature/windows-gui]
+    paths: ["gui/**", ".github/workflows/windows-gui.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: gui
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: gui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gui
+
+      - name: Fetch Real-ESRGAN engine
+        run: scripts/fetch-engine.sh windows
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test core
+        run: cargo test -p upscaler-core
+
+      - name: Build portable exe
+        run: npm run tauri build -- --no-bundle
+
+      - name: Collect exe
+        run: |
+          mkdir -p ../out
+          cp target/release/upscaler-gui.exe ../out/Upscaler.exe
+          ls -l ../out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Upscaler-portable
+          path: out/Upscaler.exe
+          if-no-files-found: error
