@@ -9,6 +9,7 @@ Local CLI (`upscale`) that enlarges images to x2/x4/2K/4K and makes them sharper
 - Targets: `xN` (N > 1) or `2k`/`4k` = long edge 2560/3840, aspect ratio kept.
 - Default content: anime/illustration (`-m anime`); `anime-hq` (sharper, ~6x slower) and `photo` available.
 - Non-commercial, English CLI.
+- Web (test): static page on GitHub Pages (public repo accepted), anime model only, x2/x4, runs on the visitor's GPU via WebGPU; images never uploaded.
 - Windows GUI: pick files/folder (or drag & drop) + output folder; only x2/x4 and Normal (`realesrgan-x4plus`) / Anime (`realesr-animevideov3`). Ships as one portable exe for testing on other machines; never overwrites outputs (`name_x2 (2).png`).
 
 ## Stack & architecture
@@ -18,6 +19,8 @@ Local CLI (`upscale`) that enlarges images to x2/x4/2K/4K and makes them sharper
 - Alpha is split off and Lanczos-resized; only RGB goes through the AI.
 - GUI: Tauri v2 + React/Vite/TS in `gui/` (cargo workspace). `gui/core` = framework-free Rust crate (pipeline via `image` crate; `core/src/domain` pure std, unit tested); `gui/src-tauri` = commands/events only.
 - GUI engine files live in `gui/engine/` (gitignored, `scripts/fetch-engine.sh`) and are embedded by `core/build.rs`, extracted to `%LOCALAPPDATA%\Upscaler\engine-v0.2.5.0` on first run.
+- Web: `web/` = vanilla ES modules, no build step. ONNX Runtime Web (WebGPU build, also does CPU/wasm) + pica (Lanczos) + coi-serviceworker (threads on Pages), all fetched into gitignored `web/vendor` by `scripts/fetch-vendor.sh`. `web/domain/tiling.js` = pure tile planning (`node --test`).
+- Web models: ONNX converted from the ncnn `.param/.bin` by `web/scripts/ncnn_to_onnx.py` (no PyTorch); fp32 + fp16 committed (~3.7 MB). Tiles use mirror padding with 10px context, which matches ncnn's output (max diff ~4/255).
 - The exe is built only by GitHub Actions (`.github/workflows/windows-gui.yml`, windows-latest, `tauri build --no-bundle`); this laptop can't build it (no WebKitGTK; Rust is user-local in `~/.cargo`).
 
 ## Progress
@@ -25,4 +28,6 @@ Local CLI (`upscale`) that enlarges images to x2/x4/2K/4K and makes them sharper
 - Measured on HD 620 (1216x832 → 4K): anime ~23s, anime-hq ~136s.
 - Done: Windows GUI (Tauri) — pipeline verified on Linux for all 4 mode/scale combos; Windows exe from CI.
 - In progress: owner testing the exe on Windows.
+- Done: web test page (`feature/web-upscaler`). Headless Chromium 131 on HD 620, 832x1109 → x4: WebGPU fp16 tile 256 = 17s AI (fp32 29s, native ncnn 23s, CPU/wasm ~5x slower than GPU).
+- Next (web): deploy to Pages, test on Windows + Linux Chrome; then decide batch/zip, 2k/4k targets, React UI.
 - Next: (ideas) parallel batch, face-restoration for photos, progress for long passes.

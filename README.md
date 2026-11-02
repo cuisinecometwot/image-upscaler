@@ -42,3 +42,24 @@ npm run tauri build -- --no-bundle   # on Windows → target/release/upscaler-gu
 # Pipeline smoke test without the GUI (Linux engine):
 cargo run --release -p upscaler-core --example upscale -- <file|folder> <out_dir> anime x2
 ```
+
+## Web version (GitHub Pages, test)
+
+`web/` is a static page that runs the anime model (`realesr-animevideov3`) in the browser via
+ONNX Runtime Web: WebGPU on the GPU, or a much slower CPU fallback. Images never leave the device.
+It supports one image at a time, x2/x4, and PNG/WebP/JPG output. A timing report can be copied
+for comparing machines.
+
+Needs a browser with WebGPU (Chrome/Edge on Windows/macOS; on Linux Chrome may need
+`chrome://flags/#enable-unsafe-webgpu` and `#enable-vulkan`). Deployed by
+`.github/workflows/web-pages.yml`.
+
+```bash
+cd web
+scripts/fetch-vendor.sh   # ONNX Runtime Web, pica, coi-serviceworker -> web/vendor (gitignored)
+npm test                  # tiling rules
+npm run serve             # http://localhost:8000
+# Regenerate the ONNX models from the ncnn files (needs numpy, onnx, onnxconverter-common):
+python scripts/ncnn_to_onnx.py ~/.local/share/upscale/models/realesr-animevideov3-x4.{param,bin} \
+  models/realesr-animevideov3-x4.onnx models/realesr-animevideov3-x4-fp16.onnx
+```

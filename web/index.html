@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Upscaler (web test)</title>
+    <!-- Reloads the page once with COOP/COEP headers (GitHub Pages can't send them) so the CPU backend can use threads. -->
+    <script src="coi-serviceworker.min.js"></script>
+    <script src="vendor/pica.min.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Upscaler <span class="tag">web test</span></h1>
+        <p class="sub">
+          Real-ESRGAN anime model (realesr-animevideov3) running in your browser. Images never leave
+          this device.
+        </p>
+      </header>
+
+      <section id="env" class="card">
+        <h2>This device</h2>
+        <dl id="env-list">
+          <dt>Status</dt>
+          <dd>checking…</dd>
+        </dl>
+      </section>
+
+      <section class="card">
+        <label id="drop" class="drop" for="file">
+          <input id="file" type="file" accept="image/png,image/jpeg,image/webp" />
+          <span id="drop-text">Drop an image here or <u>choose a file</u></span>
+        </label>
+
+        <div class="controls">
+          <label
+            >Scale
+            <select id="scale">
+              <option value="2">x2</option>
+              <option value="4">x4</option>
+            </select>
+          </label>
+          <label
+            >Backend
+            <select id="backend">
+              <option value="webgpu">GPU (WebGPU)</option>
+              <option value="wasm">CPU (WASM)</option>
+            </select>
+          </label>
+          <label
+            >Precision
+            <select id="precision">
+              <option value="fp16">fp16 (GPU only)</option>
+              <option value="fp32">fp32</option>
+            </select>
+          </label>
+          <label
+            >Tile size
+            <select id="tile">
+              <option>128</option>
+              <option>192</option>
+              <option selected>256</option>
+              <option>384</option>
+              <option>512</option>
+            </select>
+          </label>
+          <label
+            >Format
+            <select id="format">
+              <option value="image/png">PNG</option>
+              <option value="image/webp">WebP</option>
+              <option value="image/jpeg">JPG</option>
+            </select>
+          </label>
+          <button id="run" disabled>Upscale</button>
+          <button id="cancel" class="secondary" hidden>Cancel</button>
+        </div>
+
+        <progress id="progress" max="1" value="0" hidden></progress>
+        <p id="status" role="status"></p>
+      </section>
+
+      <section id="report-card" class="card" hidden>
+        <h2>Timing</h2>
+        <pre id="report"></pre>
+        <button id="copy" class="secondary">Copy report</button>
+      </section>
+
+      <section id="result-card" class="card" hidden>
+        <h2>Result</h2>
+        <p><a id="download" class="button">Download</a></p>
+        <img id="result" alt="Upscaled result" />
+      </section>
+    </main>
+  </body>
+</html>

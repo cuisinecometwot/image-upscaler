@@ -14,3 +14,7 @@ gui/dist/
 gui/target/
 gui/engine/
 gui/src-tauri/gen/
+
+# Web (GitHub Pages)
+web/vendor/
+web/coi-serviceworker.min.js
