@@ -19,7 +19,9 @@ Local CLI (`upscale`) that enlarges images to x2/x4/2K/4K and makes them sharper
 - Alpha is split off and Lanczos-resized; only RGB goes through the AI.
 - GUI: Tauri v2 + React/Vite/TS in `gui/` (cargo workspace). `gui/core` = framework-free Rust crate (pipeline via `image` crate; `core/src/domain` pure std, unit tested); `gui/src-tauri` = commands/events only.
 - GUI engine files live in `gui/engine/` (gitignored, `scripts/fetch-engine.sh`) and are embedded by `core/build.rs`, extracted to `%LOCALAPPDATA%\Upscaler\engine-v0.2.5.0` on first run.
-- Web: `web/` = vanilla ES modules, no build step. ONNX Runtime Web (WebGPU build, also does CPU/wasm) + pica (Lanczos) + coi-serviceworker (threads on Pages), all fetched into gitignored `web/vendor` by `scripts/fetch-vendor.sh`. `web/domain/tiling.js` = pure tile planning (`node --test`).
+- Web: `web/` = vanilla ES modules, no build step. ONNX Runtime Web (WebGPU build, also does CPU/wasm) + coi-serviceworker (threads on Pages), all fetched into gitignored `web/vendor` by `scripts/fetch-vendor.sh`. `web/domain/` (pure, `node --test`): `tiling.js` tile planning, `resample.js` Lanczos3 + preview box filter, `png.js` streaming PNG encoder.
+- Web memory (phones crashed on big outputs): only one full-size RGBA buffer is ever held. x2 is Lanczos-resized per tile (x4 context covers the filter), PNG is encoded in JS via `CompressionStream` (no full-size canvas), and the page shows a ≤1600px preview, not the full image. JPG/WebP still need one full-size canvas.
+- Web input: file picker, drop (files, or an image dragged from another tab via its HTML/URL + `fetch`, which needs CORS) and paste.
 - Web models: ONNX converted from the ncnn `.param/.bin` by `web/scripts/ncnn_to_onnx.py` (no PyTorch); fp32 + fp16 committed (~3.7 MB). Tiles use mirror padding with 10px context, which matches ncnn's output (max diff ~4/255).
 - The exe is built only by GitHub Actions (`.github/workflows/windows-gui.yml`, windows-latest, `tauri build --no-bundle`); this laptop can't build it (no WebKitGTK; Rust is user-local in `~/.cargo`).
 
@@ -29,5 +31,6 @@ Local CLI (`upscale`) that enlarges images to x2/x4/2K/4K and makes them sharper
 - Done: Windows GUI (Tauri) — pipeline verified on Linux for all 4 mode/scale combos; Windows exe from CI.
 - In progress: owner testing the exe on Windows.
 - Done: web test page (`feature/web-upscaler`). Headless Chromium 131 on HD 620, 832x1109 → x4: WebGPU fp16 tile 256 = 17s AI (fp32 29s, native ncnn 23s, CPU/wasm ~5x slower than GPU).
+- Done: web fixes (`fix/web-mobile-memory`): big-output crash on phones, drag from another tab. 1500x1000 → x4 PNG: encode 6s, 13.8 MB.
 - Next (web): deploy to Pages, test on Windows + Linux Chrome; then decide batch/zip, 2k/4k targets, React UI.
 - Next: (ideas) parallel batch, face-restoration for photos, progress for long passes.

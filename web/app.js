@@ -93,11 +93,57 @@ async function detectEnv() {
 
 // ---------- file input ----------
 
+const IMAGE_EXT = /\.(png|jpe?g|webp|gif|bmp|avif)$/i;
+
+function isImage(file) {
+  // Some OS/browser combos give dropped files an empty type.
+  return file.type ? file.type.startsWith("image/") : IMAGE_EXT.test(file.name);
+}
+
 function setFile(file) {
-  if (!file || !file.type.startsWith("image/")) return;
+  if (!file) return;
+  if (!isImage(file)) {
+    ui.status.textContent = `Not an image: ${file.name || file.type}`;
+    return;
+  }
   state.file = file;
   ui.dropText.textContent = `${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+  ui.status.textContent = "";
   ui.run.disabled = false;
+}
+
+// An image dragged from another tab usually arrives as HTML/URL, not as a file.
+// Must run synchronously in the drop handler: dataTransfer is emptied afterwards.
+function droppedUrl(dt) {
+  const uriList = dt
+    .getData("text/uri-list")
+    .split(/\r?\n/)
+    .find((l) => l && !l.startsWith("#"));
+  // Prefer the <img> itself: for a linked image the uri-list is the link target.
+  const html = dt.getData("text/html");
+  const src = html && new DOMParser().parseFromString(html, "text/html").querySelector("img[src]");
+  if (src) return new URL(src.getAttribute("src"), uriList || location.href).href;
+  if (uriList) return uriList;
+  const text = dt.getData("text/plain").trim();
+  return /^(https?:|data:image\/)/.test(text) ? text : null;
+}
+
+async function fileFromUrl(url) {
+  let blob;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    blob = await res.blob();
+  } catch {
+    // Almost always CORS: the other site doesn't let pages read its images.
+    throw new Error(
+      "That site doesn't allow reading the image from here. Copy the image and paste it (Ctrl+V), or save it and drop the file.",
+    );
+  }
+  const name = url.startsWith("data:")
+    ? "image"
+    : decodeURIComponent(new URL(url).pathname.split("/").pop() || "image");
+  return new File([blob], name, { type: blob.type });
 }
 
 ui.file.addEventListener("change", () => setFile(ui.file.files[0]));
@@ -113,7 +159,22 @@ for (const ev of ["dragleave", "drop"]) {
     ui.drop.classList.remove("over");
   });
 }
-document.addEventListener("drop", (e) => setFile(e.dataTransfer.files[0]));
+document.addEventListener("drop", async (e) => {
+  const file = e.dataTransfer.files[0];
+  if (file) return setFile(file);
+  const url = droppedUrl(e.dataTransfer);
+  if (!url) return;
+  ui.status.textContent = "Fetching dropped image…";
+  try {
+    setFile(await fileFromUrl(url));
+  } catch (err) {
+    ui.status.textContent = err.message;
+  }
+});
+document.addEventListener("paste", (e) => {
+  const file = [...e.clipboardData.files].find(isImage);
+  if (file) setFile(file);
+});
 
 // ---------- pipeline ----------
 
