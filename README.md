@@ -56,7 +56,7 @@ Needs a browser with WebGPU (Chrome/Edge on Windows/macOS; on Linux Chrome may n
 
 ```bash
 cd web
-scripts/fetch-vendor.sh   # ONNX Runtime Web, pica, coi-serviceworker -> web/vendor (gitignored)
+scripts/fetch-vendor.sh   # ONNX Runtime Web, coi-serviceworker -> web/vendor (gitignored)
 npm test                  # tiling rules
 npm run serve             # http://localhost:8000
 # Regenerate the ONNX models from the ncnn files (needs numpy, onnx, onnxconverter-common):

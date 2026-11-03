@@ -1,4 +1,6 @@
 import * as ort from "./vendor/ort.webgpu.min.mjs";
+import { encodePng } from "./domain/png.js";
+import { boxDownscale, resizePlane } from "./domain/resample.js";
 import { MODEL_SCALE, mirrorIndex, planTiles, targetSize } from "./domain/tiling.js";
 
 const MODEL_URLS = {
@@ -6,8 +8,10 @@ const MODEL_URLS = {
   // Same weights stored/computed in half precision; float32 in/out so the pipeline is unchanged.
   fp16: new URL("./models/realesr-animevideov3-x4-fp16.onnx", import.meta.url).href,
 };
-// Browsers refuse canvases much beyond this; the full-res RGBA buffer also has to fit in memory.
-const MAX_AI_PIXELS = 80e6;
+// The full-res RGBA output buffer (4 bytes/px) has to fit in memory.
+const MAX_OUTPUT_PIXELS = 80e6;
+const WEBP_MAX_EDGE = 16383;
+const PREVIEW_MAX_EDGE = 1600;
 
 ort.env.wasm.wasmPaths = new URL("./vendor/", import.meta.url).href;
 ort.env.wasm.numThreads = self.crossOriginIsolated
@@ -38,7 +42,14 @@ const ui = {
   result: $("result"),
 };
 
-const state = { file: null, sessions: new Map(), env: {}, cancelled: false, resultUrl: null };
+const state = {
+  file: null,
+  sessions: new Map(),
+  env: {},
+  cancelled: false,
+  resultUrl: null,
+  previewUrl: null,
+};
 
 // ---------- environment ----------
 
@@ -149,22 +160,30 @@ function tileInput(px, W, H, t) {
   return new ort.Tensor("float32", data, [1, 3, t.inH, t.inW]);
 }
 
-// Copies the tile's centre (context cropped off) into the full-size RGBA buffer.
-function writeTile(out, OW, y, t) {
-  const S = MODEL_SCALE;
-  const oW = t.inW * S;
-  const plane = oW * t.inH * S;
-  const offX = (t.x - t.inX) * S;
-  const offY = (t.y - t.inY) * S;
-  for (let r = 0; r < t.h * S; r++) {
-    const srcRow = (r + offY) * oW + offX;
-    let d = ((t.y * S + r) * OW + t.x * S) * 4;
-    for (let c = 0; c < t.w * S; c++, d += 4) {
+// Copies the tile's centre (context cropped off) into the full-size RGBA buffer. For x2 the
+// tile is Lanczos-resized first; the 40px of x4 context covers the filter's reach, so
+// tiles join without seams and no full x4 image is ever held in memory.
+function writeTile(out, OW, y, t, scale) {
+  const mw = t.inW * MODEL_SCALE;
+  const mh = t.inH * MODEL_SCALE;
+  let planes = [0, 1, 2].map((c) => y.subarray(c * mw * mh, (c + 1) * mw * mh));
+  let pw = mw;
+  if (scale !== MODEL_SCALE) {
+    pw = t.inW * scale;
+    planes = planes.map((p) => resizePlane(p, mw, mh, pw, t.inH * scale));
+  }
+  const [R, G, B] = planes;
+  const offX = (t.x - t.inX) * scale;
+  const offY = (t.y - t.inY) * scale;
+  for (let r = 0; r < t.h * scale; r++) {
+    const srcRow = (r + offY) * pw + offX;
+    let d = ((t.y * scale + r) * OW + t.x * scale) * 4;
+    for (let c = 0; c < t.w * scale; c++, d += 4) {
       const s = srcRow + c;
       // Uint8ClampedArray clamps and rounds for us.
-      out[d] = y[s] * 255;
-      out[d + 1] = y[plane + s] * 255;
-      out[d + 2] = y[2 * plane + s] * 255;
+      out[d] = R[s] * 255;
+      out[d + 1] = G[s] * 255;
+      out[d + 2] = B[s] * 255;
       out[d + 3] = 255;
     }
   }
@@ -177,10 +196,33 @@ function makeCanvas(w, h) {
   return c;
 }
 
-async function lanczos(from, w, h) {
-  const to = makeCanvas(w, h);
-  await pica().resize(from, to, { filter: "lanczos3" });
-  return to;
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((res) => canvas.toBlob(res, type, quality));
+}
+
+// JPG/WebP have no streaming encoder here, so they need one full-size canvas.
+async function encodeWithCanvas(out, w, h, format) {
+  const canvas = makeCanvas(w, h);
+  canvas.getContext("2d").putImageData(new ImageData(out, w, h), 0, 0);
+  const blob = await canvasToBlob(canvas, format, 0.95);
+  // Give the backing store back now; Safari otherwise keeps it until GC.
+  canvas.width = canvas.height = 0;
+  if (!blob || blob.type !== format) {
+    throw new Error(
+      `This browser can't encode a ${w}x${h} ${format.slice(6).toUpperCase()}. Choose PNG.`,
+    );
+  }
+  return blob;
+}
+
+// Showing the full result in an <img> means decoding it again at full size, which is
+// enough to kill a phone tab; show a small preview instead (Download has the full file).
+async function makePreview(out, w, h) {
+  const factor = Math.ceil(Math.max(w, h) / PREVIEW_MAX_EDGE);
+  const p = factor > 1 ? boxDownscale(out, w, h, factor) : { data: out, width: w, height: h };
+  const canvas = makeCanvas(p.width, p.height);
+  canvas.getContext("2d").putImageData(new ImageData(p.data, p.width, p.height), 0, 0);
+  return canvasToBlob(canvas, "image/png");
 }
 
 async function upscale(file, { scale, backend, precision, tileSize, format }, onProgress) {
@@ -190,13 +232,16 @@ async function upscale(file, { scale, backend, precision, tileSize, format }, on
   const W = bitmap.width,
     H = bitmap.height;
   const px = readPixels(bitmap);
+  bitmap.close();
   const alpha = hasAlpha(px);
-  const OW = W * MODEL_SCALE,
-    OH = H * MODEL_SCALE;
-  if (OW * OH > MAX_AI_PIXELS) {
-    throw new Error(
-      `Image too large for this test page (${W}x${H}; x4 pass would be ${OW}x${OH}).`,
-    );
+  const target = targetSize(W, H, scale);
+  const OW = target.width,
+    OH = target.height;
+  if (OW * OH > MAX_OUTPUT_PIXELS) {
+    throw new Error(`Image too large for this test page (${W}x${H} -> ${OW}x${OH}).`);
+  }
+  if (format === "image/webp" && Math.max(OW, OH) > WEBP_MAX_EDGE) {
+    throw new Error(`WebP is limited to ${WEBP_MAX_EDGE}px per side (${OW}x${OH}). Choose PNG.`);
   }
   times.decode = performance.now() - t0;
 
@@ -214,7 +259,7 @@ async function upscale(file, { scale, backend, precision, tileSize, format }, on
     const ts = performance.now();
     const input = tileInput(px, W, H, t);
     const { output } = await session.run({ input });
-    writeTile(out, OW, output.data, t);
+    writeTile(out, OW, output.data, t, scale);
     input.dispose();
     output.dispose();
     tileMs.push(performance.now() - ts);
@@ -227,39 +272,26 @@ async function upscale(file, { scale, backend, precision, tileSize, format }, on
   }
   times.inference = performance.now() - t0;
 
-  onProgress(1, "Resizing & encoding…");
   t0 = performance.now();
-  const aiCanvas = makeCanvas(OW, OH);
-  aiCanvas.getContext("2d").putImageData(new ImageData(out, OW, OH), 0, 0);
-  const target = targetSize(W, H, scale);
-  let final = aiCanvas;
-  if (target.width !== OW) final = await lanczos(aiCanvas, target.width, target.height);
   if (alpha) {
-    // Alpha skips the AI: Lanczos-resize it as a grayscale image and put it back.
-    const a = makeCanvas(W, H);
-    const aData = new ImageData(W, H);
-    for (let i = 0; i < px.length; i += 4) {
-      aData.data[i] = aData.data[i + 1] = aData.data[i + 2] = px[i + 3];
-      aData.data[i + 3] = 255;
-    }
-    a.getContext("2d").putImageData(aData, 0, 0);
-    const big = (await lanczos(a, target.width, target.height))
-      .getContext("2d")
-      .getImageData(0, 0, target.width, target.height).data;
-    const ctx = final.getContext("2d");
-    const img = ctx.getImageData(0, 0, target.width, target.height);
-    for (let i = 0; i < big.length; i += 4) img.data[i + 3] = big[i];
-    ctx.putImageData(img, 0, 0);
+    // Alpha skips the AI: Lanczos-resize it on its own straight into the alpha channel.
+    onProgress(1, "Resizing alpha…");
+    const a = new Float32Array(W * H);
+    for (let i = 0; i < a.length; i++) a[i] = px[i * 4 + 3];
+    resizePlane(a, W, H, OW, OH, out, { stride: 4, offset: 3 });
   }
   times.resize = performance.now() - t0;
 
+  onProgress(1, "Encoding…");
   t0 = performance.now();
-  const blob = await new Promise((res, rej) =>
-    final.toBlob((b) => (b ? res(b) : rej(new Error("Encoding failed"))), format, 0.95),
-  );
+  const blob =
+    format === "image/png"
+      ? await encodePng(out, OW, OH, { alpha })
+      : await encodeWithCanvas(out, OW, OH, format);
   times.encode = performance.now() - t0;
+  const preview = await makePreview(out, OW, OH);
 
-  return { blob, W, H, target, tiles, tileMs, times, alpha };
+  return { blob, preview, W, H, target, tiles, tileMs, times, alpha };
 }
 
 // ---------- report ----------
@@ -309,10 +341,13 @@ ui.run.addEventListener("click", async () => {
     });
     ui.report.textContent = report(r, opts);
     ui.reportCard.hidden = false;
-    if (state.resultUrl) URL.revokeObjectURL(state.resultUrl);
+    for (const url of [state.resultUrl, state.previewUrl]) if (url) URL.revokeObjectURL(url);
     state.resultUrl = URL.createObjectURL(r.blob);
+    state.previewUrl = URL.createObjectURL(r.preview);
     const ext = { "image/png": "png", "image/webp": "webp", "image/jpeg": "jpg" }[opts.format];
-    ui.download.href = ui.result.src = state.resultUrl;
+    ui.download.href = state.resultUrl;
+    ui.download.textContent = `Download (${(r.blob.size / 1e6).toFixed(1)} MB)`;
+    ui.result.src = state.previewUrl;
     ui.download.download = `${state.file.name.replace(/\.[^.]+$/, "")}_x${opts.scale}.${ext}`;
     ui.resultCard.hidden = false;
     ui.status.textContent = `Done in ${(r.times.inference / 1000).toFixed(1)}s AI time.`;

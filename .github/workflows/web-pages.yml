@@ -34,7 +34,7 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Fetch ONNX Runtime, pica, coi-serviceworker
+      - name: Fetch ONNX Runtime, coi-serviceworker
         run: scripts/fetch-vendor.sh
 
       - uses: actions/configure-pages@v5
