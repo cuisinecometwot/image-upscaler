@@ -32,5 +32,6 @@ Local CLI (`upscale`) that enlarges images to x2/x4/2K/4K and makes them sharper
 - In progress: owner testing the exe on Windows.
 - Done: web test page (`feature/web-upscaler`). Headless Chromium 131 on HD 620, 832x1109 → x4: WebGPU fp16 tile 256 = 17s AI (fp32 29s, native ncnn 23s, CPU/wasm ~5x slower than GPU).
 - Done: web fixes (`fix/web-mobile-memory`): big-output crash on phones, drag from another tab. 1500x1000 → x4 PNG: encode 6s, 13.8 MB.
+- Done: web SEO (`feature/web-seo`): keyword title/description ("free AI image upscaler online, no upload"), canonical, OG image (`web/og.png`), JSON-LD WebApplication, how-to + FAQ text, favicon, `web/sitemap.xml` (listed in the root robots.txt of the cuisinecometwot.github.io repo). Keep FAQ claims in sync with the app (e.g. the 80 MP limit).
 - Next (web): deploy to Pages, test on Windows + Linux Chrome; then decide batch/zip, 2k/4k targets, React UI.
 - Next: (ideas) parallel batch, face-restoration for photos, progress for long passes.

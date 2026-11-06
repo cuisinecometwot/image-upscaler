@@ -3,7 +3,45 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Upscaler (web test)</title>
+    <title>Free AI Image Upscaler Online – Upscale Images 2x/4x, No Upload</title>
+    <meta
+      name="description"
+      content="Free online AI image upscaler. Enlarge anime, illustrations and artwork 2x or 4x with Real-ESRGAN, right in your browser. No sign-up, no watermark, images never uploaded."
+    />
+    <link rel="canonical" href="https://cuisinecometwot.github.io/image-upscaler/" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <meta name="theme-color" content="#3b6cf6" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Yutoku Tech" />
+    <meta property="og:title" content="Free AI Image Upscaler Online (No Upload)" />
+    <meta
+      property="og:description"
+      content="Upscale anime and illustrations 2x or 4x with Real-ESRGAN in your browser. Free, no sign-up, images stay on your device."
+    />
+    <meta property="og:url" content="https://cuisinecometwot.github.io/image-upscaler/" />
+    <meta property="og:image" content="https://cuisinecometwot.github.io/image-upscaler/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Free AI Image Upscaler",
+        "url": "https://cuisinecometwot.github.io/image-upscaler/",
+        "description": "Upscale anime, illustrations and artwork 2x or 4x with Real-ESRGAN, running locally in the browser via WebGPU. Images are never uploaded.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Any (Chrome, Edge or another browser with WebGPU)",
+        "browserRequirements": "Requires JavaScript. WebGPU recommended; falls back to CPU (WebAssembly).",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": {
+          "@type": "Person",
+          "name": "Huu Duc Nguyen",
+          "url": "https://cuisinecometwot.github.io/"
+        }
+      }
+    </script>
     <!-- Reloads the page once with COOP/COEP headers (GitHub Pages can't send them) so the CPU backend can use threads. -->
     <script src="coi-serviceworker.min.js"></script>
     <link rel="stylesheet" href="style.css" />
@@ -12,10 +50,11 @@
   <body>
     <main>
       <header>
-        <h1>Upscaler <span class="tag">web test</span></h1>
+        <h1>Free AI Image Upscaler <span class="tag">beta</span></h1>
         <p class="sub">
-          Real-ESRGAN anime model (realesr-animevideov3) running in your browser. Images never leave
-          this device.
+          Upscale anime, illustrations and artwork 2x or 4x online with the Real-ESRGAN AI model. It
+          runs in your browser: free, no sign-up, no watermark, and your images never leave this
+          device.
         </p>
       </header>
 
@@ -92,6 +131,50 @@
         <p><a id="download" class="button">Download</a></p>
         <img id="result" alt="Upscaled result" />
       </section>
+
+      <section class="card info" aria-labelledby="howto-title">
+        <h2 id="howto-title">How to upscale an image</h2>
+        <ol>
+          <li>Drop, paste or choose a PNG, JPG or WebP image.</li>
+          <li>
+            Pick <strong>x2</strong> or <strong>x4</strong> and click <strong>Upscale</strong>.
+          </li>
+          <li>Download the enlarged image as PNG, WebP or JPG.</li>
+        </ol>
+      </section>
+
+      <section class="card info" aria-labelledby="faq-title">
+        <h2 id="faq-title">FAQ</h2>
+        <h3>Is this image upscaler really free?</h3>
+        <p>Yes. There is no account, no limit on the number of images and no watermark.</p>
+        <h3>Are my images uploaded to a server?</h3>
+        <p>
+          No. The AI model is downloaded once and runs on your own GPU through WebGPU (or on the CPU
+          if WebGPU is not available). Images never leave your device.
+        </p>
+        <h3>What kind of images work best?</h3>
+        <p>
+          Anime, manga, illustrations, game art and other drawn images. It uses the
+          <code>realesr-animevideov3</code> Real-ESRGAN model, which sharpens lines and removes blur
+          and JPEG artifacts. Photos work too, but faces and fine textures can look painted.
+        </p>
+        <h3>How big can the output be?</h3>
+        <p>
+          Up to about 80 megapixels (for example 2000×1500 → 8000×6000 at x4). Large images take
+          longer, and phones may need a smaller input.
+        </p>
+        <h3>Which browsers are supported?</h3>
+        <p>
+          Recent Chrome and Edge on Windows, macOS, Linux and Android use the GPU and are fastest.
+          Browsers without WebGPU fall back to the slower CPU mode.
+        </p>
+      </section>
+
+      <footer class="foot">
+        Made by <a href="https://cuisinecometwot.github.io/">Huu Duc Nguyen</a> ·
+        <a href="https://github.com/cuisinecometwot/image-upscaler">Source on GitHub</a> (also a
+        desktop app and CLI for batch upscaling to 2K/4K)
+      </footer>
     </main>
   </body>
 </html>

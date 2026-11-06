@@ -156,3 +156,20 @@ pre {
   border-radius: 8px;
   display: block;
 }
+
+.info h3 {
+  margin: 16px 0 4px;
+  font-size: 0.95rem;
+}
+.info p,
+.info ol {
+  margin: 0;
+}
+.foot {
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.foot a {
+  color: inherit;
+}
